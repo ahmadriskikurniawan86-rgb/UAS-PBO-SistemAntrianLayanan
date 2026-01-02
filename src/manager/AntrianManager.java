@@ -1,8 +1,11 @@
+package manager;
 
+import model.Pelanggan;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.List;
 import java.util.ArrayList;
+
 
 public class AntrianManager {
     private Queue<Pelanggan> antrian;
