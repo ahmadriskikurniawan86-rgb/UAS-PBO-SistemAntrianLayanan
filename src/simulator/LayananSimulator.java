@@ -1,42 +1,48 @@
 package simulator;
 
 import manager.AntrianManager;
+import manager.FileManager;
 import model.Pelanggan;
 import model.Petugas;
 
-/**
- * LayananSimulator
- * mengatur simulasi pelayanan otomatis menggunakan timer
+import java.time.LocalDateTime;
+import java.util.Timer;
+import java.util.TimerTask;
+
+/*
+* LayananSimolator
+* mengatur simulasi pelayanan otomatis
  */
 
-public class LayananSimulator {
 
+public class LayananSimulator {
+    private Petugas petugas;
     private AntrianManager antrianManager;
+    private FileManager fileManager;
     private Timer timer;
+    private int durasiLayanan; // dalam detik
     private boolean isRunning;
 
-
-    /**
-     * constructor
-     *
-     * @param antrianManager manager antrian
-     * @param durasiLayanan durasi layanan (detik)
-     */
-
+    public LayananSimulator(Petugas petugas, AntrianManager antrianManager, FileManager fileManager,
                             int durasiLayanan) {
+        this.petugas = petugas;
         this.antrianManager = antrianManager;
+        this.fileManager = fileManager;
         this.durasiLayanan = durasiLayanan;
         this.isRunning = false;
     }
-    /**
-     * Memulai simulasi pelayanan
+
+    /*
+    * memulai simulasi pelayanan
      */
 
+    public void mulaiSimulasi() {
+        if (isRunning)
             return;
         isRunning = true;
         timer = new Timer();
 
-        // cek kondisi setiap 1 detik
+        // Cek antrian setiap 1 detik
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
@@ -45,34 +51,59 @@ public class LayananSimulator {
         }, 0, 1000);
     }
 
-    /**
-     * Menghentikan simulasi pelayanan
+    /*
+    * menghentikan simulasi pelayanan
      */
 
+    public void hentikanSimulasi() {
+        if (timer != null) {
             timer.cancel();
+            timer = null;
+        }
         isRunning = false;
-
     }
 
-    /**
-     * Proses utama pelayanan
-     * petugas tersedia -> ambil pelanggan -> Layani -> selesai
+    public boolean isRunning() {
+        return isRunning;
+    }
+
+    /*
+    * proses utama pelayanan
      */
 
-
+    private void prosesLayanan() {
+        if (!petugas.isSedangMelayani()) {
+            Pelanggan pelanggan = antrianManager.ambilPelangganBerikutnya();
+            if (pelanggan != null) {
                 petugas.mulaiLayanan(pelanggan);
+                // System.out.println(petugas.getNama() + " mulai melayani " +
+                // pelanggan.getNama());
 
+                // Jadwalkan selesai layanan
+                // Kita gunakan timer baru atau thread sleep?
+                // Karena kita di dalam TimerTask, sleep akan memblokir pengecekan berikutnya
+                // (yg mana tidak masalah karena petugas sibuk)
+                // Tapi lebih baik gunakan Timer terpisah atau schedule one-shot task di timer
+                // yg sama?
+                // Jika pakai schedule di timer yg sama, queue execution.
 
+                // Cara simple: schedule task untuk selesai
+                new Timer().schedule(new TimerTask() {
                     @Override
                     public void run() {
+                        selesaikanLayanan(pelanggan);
                     }
+                }, durasiLayanan * 1000L);
             }
         }
     }
 
-    /**
-     * Mengatur durasi Layanan (detik)
-     */
-
+    private void selesaikanLayanan(Pelanggan pelanggan) {
+        LocalDateTime waktuSelesai = LocalDateTime.now();
+        petugas.selesaiLayanan();
+        antrianManager.tambahKeRiwayat(pelanggan);
+        fileManager.simpanLog(pelanggan, petugas.getNama(), waktuSelesai);
+        // System.out.println(petugas.getNama() + " selesai melayani " +
+        // pelanggan.getNama());
     }
 }
